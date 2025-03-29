@@ -1,32 +1,35 @@
-int main(){
-    pthread_t readers[MAX_READERS], writers[2]; //More readers than writers
-    int reader_ids[MAX_READERS], writers_ids[2];
+#include "library.h"
 
-    pthread_mutex_init(&book_mutex, NULL);
-    sem_init(&rw_mutex, 0,1);
+int main() {
+pthread_t readers[MAX_READERS], writers[2];
+int reader_ids[MAX_READERS], writer_ids[2];
 
-    //Creating reader threads
-    for (int i=0; i<MAX_READERS;i++){
-        reader_ids[i] = i+1;
-        pthread_create(&readers[i], NULL, reader, &reader_ids[i]);
-    }
+initialize_library(); // Initialize mutex & semaphores
 
-    //Creating writer threads
-    for (int i=0; i<2; i++){
-    writer_ids[i] = i+1;
-    pthreade_create(&writers[i], NULL, writer, &writer_ids[i]);
-    }
+// Create reader threads
+for (int i = 0; i < MAX_READERS; i++) {
+reader_ids[i] = i + 1;
+pthread_create(&readers[i], NULL, reader, &reader_ids[i]);
+}
 
-    //Join threads for controlled termination
-    for (int i = 0; i<MAX_READERS; i++){
-        pthread_join(readers[i], NULL);
-    }
-    for (int i =0; i<2; i++){
-        pthread_join(writers[i], NULL);
-    }
+// Create writer threads
+for (int i = 0; i < 2; i++) {
+writer_ids[i] = i + 1;
+pthread_create(&writers[i], NULL, writer, &writer_ids[i]);
+}
 
-    //Clean
-    pthread_mutex_destroy(&book_mutex);
-    sem_destroyed(&rw_mutex);
-    return 0;
-}//end main
+// Join threads (optional, for controlled termination)
+for (int i = 0; i < MAX_READERS; i++) {
+pthread_join(readers[i], NULL);
+}
+for (int i = 0; i < 2; i++) {
+pthread_join(writers[i], NULL);
+}
+
+// Cleanup
+pthread_mutex_destroy(&book_mutex);
+sem_destroy(&rw_mutex);
+
+return 0;
+}
+
