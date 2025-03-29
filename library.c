@@ -1,72 +1,77 @@
 #include "library.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
 
-//Book records
-Book library[MAX_BOOKS] = {
-    {"Atomic Habits", "Mark Something" , 1},
-    {"You Deserve Each Other", "Sarah Hogle", 1},
-    {"Oliver Twist", "Charlie D", 1}
+#define NUM_BOOKS 3
+
+typedef struct {
+    char title[50];
+    char author[50];
+    char status[10]; // "Available" or "Borrowed"
+} Book;
+
+Book books[NUM_BOOKS] = {
+    {"Atomic Habits", "Mark Something", "Available"},
+    {"You Deserve Each Other", "Sarah Hogle", "Borrowed"},
+    {"Oliver Twist", "Charlie D", "Available"}
 };
 
-//Initialisation
+pthread_mutex_t book_mutex = PTHREAD_MUTEX_INITIALIZER;
+int stop_execution = 0; // Global stop flag
 
-//Synchronisation of variables
-pthread_mutex_t book_mutex;
-sem_t rw_mutex;
-int reader_count = 0;
-
-//Mutex and Semaphores
-void initialise_library(){
-    pthread_mutex_init(&book_mutex, NULL);
-    sem_init(&rw_mutex, 0 ,1);
+void display_books() {
+    printf("Book List:\n");
+    for (int i = 0; i < NUM_BOOKS; i++) {
+        printf("%s by %s - %s\n", books[i].title, books[i].author, books[i].status);
+    }
+    fflush(stdout); // Force output immediately
 }
 
-//Reader Function
-void *reader(void *arg){
-    int id =*(int * )arg;
-    while(1){
-        //Reader count update
-        pthread_mutex_lock(&book_mutex);
-        reader_count++;
-        if(reader_count == 1){
-            sem_wait(&rw_mutex); //First reader blocks writers
-        }
-        pthread_mutex_unblock(&book_mutex);
+void *reader(void *arg) {
+    int id = *(int *)arg;
+    int read_count = 0;
 
-        //Reading books
-        printf("Reader %d is reading book list: \n", id);
-        for(int i=0; i<MAX_BOOKS; i++){
-            printf("%s by %s - %s\n", library[i].title, library[i].author, library[i].availaible ? "Available" : "Borrowed");
-        }
-        sleep(1); //simulating reading time
-
-        //End of critical section (reader count update)
+    while (!stop_execution && read_count < 5) { // Limit each reader to 5 reads
         pthread_mutex_lock(&book_mutex);
-        reader_count--;
-        if(reader_count == 0){
-            sem_post(&rw_mutex); //Last reader allows writers
-        }
-        pthread_mutex_unblock(&book_mutex);
-        sleep(rand() %3 +1);//simulating random reading intervals 
+        printf("Reader %d is reading book list:\n", id);
+        display_books();
+        pthread_mutex_unlock(&book_mutex);
+
+        sleep(1);
+        read_count++;
     }
+
+    printf("Reader %d stopped.\n", id);
+    fflush(stdout);
     return NULL;
 }
 
-//Writer function(Librarians)
-void *writer(void *arg){
+void *writer(void *arg) {
     int id = *(int *)arg;
+    int write_count = 0;
 
-    while(1){
-        sem_wait(&rw_mutex); //Writer gets exclusive access
+    while (!stop_execution && write_count < 3) { // Limit each writer to 3 updates
+        pthread_mutex_lock(&book_mutex);
 
-        //Modify book records
-        int book_index = rand() % MAX_BOOKS;
-        library[book_index].availaible = !library[book_index].availaible;
-        printf("Writer %d updated book: %s , new status: %s\n",id, library[book_index].title, library[book_index].availaible ? "Available" : "Borrowed");
-        sleep(2); // Simulating writing time
+        int book_index = rand() % NUM_BOOKS;
+        if (strcmp(books[book_index].status, "Available") == 0) {
+            strcpy(books[book_index].status, "Borrowed");
+        } else {
+            strcpy(books[book_index].status, "Available");
+        }
 
-        sem_post(&rw_mutex); //Release access for others
-        sleep(rand() %5+1);//Simulating random writing intervals 
+        printf("Writer %d updated book: %s, new status: %s\n",
+               id, books[book_index].title, books[book_index].status);
+        pthread_mutex_unlock(&book_mutex);
 
+        sleep(2);
+        write_count++;
     }
+
+    printf("Writer %d stopped.\n", id);
+    fflush(stdout);
     return NULL;
 }
