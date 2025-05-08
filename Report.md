@@ -113,11 +113,8 @@ Atomic Habits            | James Clear        | Available  |               |    
 
 ## 🧑‍💻 Authors
 
-- ✍️ Developed by [Your Name]
+- ✍️ Developed by Areeba Hasnain . Emman Ali
 - 🛠️ OS concepts implemented manually for learning
 
 ---
 
-## 📜 License
-
-This project is open source and provided under the MIT License.
